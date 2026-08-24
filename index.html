@@ -639,7 +639,7 @@ const CONFIG = {
   deadlineShort: "Sign-ups close 30 Aug",
 
   contactName:     "Jeet",
-  contactWhatsApp: "919XXXXXXXXX",   // country code + number, digits only, no +
+  contactWhatsApp: "919329641726",   // country code + number, digits only, no +
 
   showCounter: true,
 
@@ -827,32 +827,45 @@ async function send(){
   btn.disabled = true; btn.textContent = "Saving…";
   $("#formError").classList.add("hidden");
 
-  // Apps Script takes a few seconds: it locks the sheet, scans for your email,
-  // writes the row and sends the notification mail before it answers. Say so
-  // rather than sitting on "Saving..." and looking stuck.
-  const steps = [[4000,"Still saving…"],[10000,"Google is being slow…"]];
-  const ticks = steps.map(([ms,txt]) => setTimeout(()=>{ btn.textContent = txt; }, ms));
-  const ctl   = new AbortController();
-  const bail  = setTimeout(()=>ctl.abort(), 30000);
-
   const data = collect();
-  try{
-    const res = await fetch(CONFIG.endpoint, {
-      method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},  // avoids a CORS preflight
-      body: JSON.stringify(data),
-      signal: ctl.signal
-    });
-    const out = await res.json();
+  const ctl  = new AbortController();
+  const bail = setTimeout(()=>ctl.abort(), 30000);
+
+  // Apps Script writes the row early in its run but takes seconds to answer:
+  // it locks the sheet, scans for a duplicate email and sends the notification
+  // mail before replying. So show the ticket at 2s rather than making people
+  // watch a spinner -- and if the save really did fail, say so afterwards.
+  const request = fetch(CONFIG.endpoint, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},  // avoids a CORS preflight
+    body: JSON.stringify(data),
+    signal: ctl.signal
+  }).then(r=>r.json()).then(out=>{
     if(!out || out.ok !== true) throw new Error("rejected");
-    showTicket(data);
-  }catch(err){
-    showFailure();
-  }finally{
-    ticks.forEach(clearTimeout); clearTimeout(bail);
-    sending = false;
-    btn.disabled = false; btn.textContent = label;
-  }
+    return true;
+  });
+  request.finally(()=>clearTimeout(bail)).catch(()=>{});
+
+  const outcome = await Promise.race([
+    request.then(()=>"saved", ()=>"failed"),
+    new Promise(go=>setTimeout(()=>go("pending"), 2000))
+  ]);
+
+  sending = false;
+  btn.disabled = false; btn.textContent = label;
+
+  if(outcome === "failed"){ showFailure(); return; }
+
+  showTicket(data);
+
+  // still in flight -- keep watching, and own up if it turns out badly
+  if(outcome === "pending") request.catch(()=>{
+    $("#ticketWrap").classList.add("hidden");
+    $("#signupForm").classList.remove("hidden");
+    if(liveCount) liveCount--;
+    showFailure("Sorry — we showed you a ticket too early. That didn't save. "
+              + "Your answers are still here: hit retry, or send them across on WhatsApp.");
+  });
 }
 
 function showFailure(msg){
