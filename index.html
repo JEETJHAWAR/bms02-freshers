@@ -124,21 +124,17 @@ h1 .p{background:var(--amber)} h1 .p2{background:var(--hot)}
 .two p:last-child{margin-bottom:0}
 .two strong{color:var(--paper);font-weight:600}
 
-/* ===== CAMPUS STRIP ===== */
-.campus .lede{margin-top:10px}
-.strip{display:flex;gap:14px;overflow-x:auto;overscroll-behavior-x:contain;
-  --inset:max(var(--gut),calc((100vw - var(--wrap))/2 + var(--gut)));
-  scroll-snap-type:x proximity;scroll-padding-inline-start:var(--inset);
-  margin-top:clamp(26px,4vh,42px);
-  padding:4px 0 18px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;
-  padding-inline:var(--inset)}
-.strip figure{margin:0;flex:none;scroll-snap-align:start;overflow:hidden;
-  width:clamp(232px,62vw,318px);border-radius:var(--r);
-  border:1px solid var(--line);background:var(--panel)}
-.strip img{display:block;width:100%;height:clamp(148px,40vw,196px);
-  object-fit:cover;filter:saturate(1.06)}
-.strip::-webkit-scrollbar{height:6px}
-.strip::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+/* ===== CAMPUS TEXTURE + CUTOUTS ===== */
+.tex{position:relative;isolation:isolate;--veil:26,12,44}
+.tex::before,.tex::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+.tex::before{background-image:var(--shot);background-position:50% 50%;background-size:cover;
+  filter:saturate(.45) brightness(.62)}
+.tex::after{background:linear-gradient(to bottom,
+  rgba(var(--veil),.97),rgba(var(--veil),.90) 45%,rgba(var(--veil),.985))}
+.cuts{display:flex;align-items:center;margin-top:clamp(22px,4vh,34px)}
+.cuts img{width:clamp(96px,23vw,138px);height:auto;aspect-ratio:1;border-radius:50%;object-fit:cover;
+  border:2px solid var(--ink-2);filter:saturate(.85);display:block}
+.cuts img+img{margin-left:-24px}
 
 /* running-order list: name … slot */
 .menu{margin-top:30px;column-gap:clamp(28px,5vw,64px)}
@@ -374,11 +370,15 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 </noscript>
 
 <!-- ===== WHY ===== -->
-<section class="alt pad">
+<section class="alt pad tex" style="--shot:url('images/002.jpeg')">
   <div class="wrap two">
     <div class="rise">
       <p class="eyebrow">Why you're here</p>
       <h2 class="h2">Their party<i>.</i><br>Our stage<i>.</i></h2>
+      <div class="cuts" aria-hidden="true">
+        <img src="images/005.jpeg" alt="" loading="lazy" decoding="async" width="447" height="447">
+        <img src="images/006.jpeg" alt="" loading="lazy" decoding="async" width="600" height="338">
+      </div>
     </div>
     <div class="rise">
       <p><strong data-cfg="hostBatch">BMS-01</strong> is putting on Freshers for us — food, music, stage, the works. None of which they had to do.</p>
@@ -388,23 +388,6 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
   </div>
 </section>
 
-<!-- ===== CAMPUS ===== -->
-<section class="pad campus">
-  <div class="wrap">
-    <p class="eyebrow rise">The place</p>
-    <h2 class="h2 rise">Home<i>.</i><br>ground<i>.</i></h2>
-    <p class="lede rise">Kozhikode and Kochi. The night itself is at
-       <strong data-cfg="venue">IIMK Kochi Campus</strong>.</p>
-  </div>
-  <div class="strip rise" role="region" aria-label="Campus photographs" tabindex="0">
-      <figure><img src="images/001.jpeg" alt="IIM Kozhikode campus seen from above" loading="lazy" decoding="async" width="330" height="247"></figure>
-      <figure><img src="images/002.jpeg" alt="Campus building behind the lawns" loading="lazy" decoding="async" width="738" height="255"></figure>
-      <figure><img src="images/003.jpeg" alt="Campus walkway and flower gardens" loading="lazy" decoding="async" width="738" height="255"></figure>
-      <figure><img src="images/004.jpeg" alt="The campus clock tower" loading="lazy" decoding="async" width="538" height="371"></figure>
-      <figure><img src="images/006.jpeg" alt="Campus buildings and the clock tower" loading="lazy" decoding="async" width="600" height="338"></figure>
-      <figure><img src="images/005.jpeg" alt="IIMK Kochi campus, the event venue" loading="lazy" decoding="async" width="447" height="447"></figure>
-  </div>
-</section>
 
 <!-- ===== PERFORM ===== -->
 <section class="pad" id="perform">
@@ -419,7 +402,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 </section>
 
 <!-- ===== VOLUNTEER ===== -->
-<section class="alt pad" id="volunteer">
+<section class="alt pad tex" id="volunteer" style="--shot:url('images/003.jpeg')">
   <div class="wrap">
     <div class="rise">
       <p class="eyebrow">Option two</p>
@@ -595,7 +578,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 </section>
 
 <!-- ===== FAQ ===== -->
-<section class="alt pad">
+<section class="alt pad tex" style="--shot:url('images/001.jpeg')">
   <div class="wrap">
     <div class="rise">
       <p class="eyebrow">Before you ask</p>

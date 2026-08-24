@@ -19,7 +19,7 @@
 const SHEET_NAME = 'Responses';
 
 /** Want an email on every sign-up? Put your address here. Leave '' for none. */
-const NOTIFY_EMAIL = '';
+const NOTIFY_EMAIL = 'jeetjhawar700@gmail.com';
 
 /** Sheet columns. Left = header, right = key sent by the website. */
 const COLS = [
