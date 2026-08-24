@@ -356,7 +356,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 
     <p class="hero-meta">
       <span><b data-cfg="eventDate">Sun 6 September</b></span>
-      <span><b data-cfg="eventTime">5:30 PM onwards</b></span>
+      <span>Time <b data-cfg="eventTime">TBC</b></span>
       <span>Venue <b data-cfg="venue">TBC</b></span>
     </p>
   </div>
@@ -436,7 +436,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
           </div>
           <div class="field">
             <label for="roll">Roll number <span class="req">*</span></label>
-            <input type="text" id="roll" placeholder="Your BMS roll no.">
+            <input type="text" id="roll" placeholder="BMS/01/123" autocapitalize="characters">
             <div class="err hidden"></div>
           </div>
         </div>
@@ -557,7 +557,6 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
         <div class="ticket-bottom">
           <span>Date<b data-cfg="eventDate">Sun 6 Sept</b></span>
           <span>Venue<b data-cfg="venue">TBC</b></span>
-          <span>Pass<b id="tCode">—</b></span>
         </div>
       </div>
 
@@ -634,7 +633,7 @@ const CONFIG = {
   hostBatch:     "BMS-01",
   year:          "2026",
   eventDate:     "Sun 6 September",
-  eventTime:     "5:30 PM onwards",
+  eventTime:     "TBC",
   venue:         "TBC",
   deadline:      "Sunday 30 August",
   deadlineShort: "Sign-ups close 30 Aug",
@@ -642,7 +641,12 @@ const CONFIG = {
   contactName:     "Jeet",
   contactWhatsApp: "919XXXXXXXXX",   // country code + number, digits only, no +
 
-  showCounter: true
+  showCounter: true,
+
+  // who is allowed to sign up
+  emailDomain: "iimk.ac.in",              // email must end in @this
+  rollPrefix:  "BMS/01/",                 // roll numbers must start with this
+  rollDigits:  3                          // ...then this many digits
 };
 
 /* =====================================================================
@@ -680,6 +684,8 @@ const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 $$("[data-cfg]").forEach(el=>{ const v=CONFIG[el.dataset.cfg]; if(v) el.textContent=v; });
+$("#roll").placeholder = rollExample();
+$("#email").placeholder = "you@" + CONFIG.emailDomain;
 
 const waHref = "https://wa.me/" + CONFIG.contactWhatsApp;
 ["footWa","tWa","waFallback"].forEach(id=>{ const el=$("#"+id); if(el) el.href = waHref; });
@@ -745,16 +751,30 @@ function clearError(field){
 }
 $$("input,textarea,select").forEach(el=>el.addEventListener("input",()=>clearError(el.closest(".field"))));
 
+function rollOk(r){
+  const pre = CONFIG.rollPrefix;
+  if(r.length !== pre.length + CONFIG.rollDigits) return false;
+  if(r.slice(0, pre.length).toUpperCase() !== pre.toUpperCase()) return false;
+  return /^\d+$/.test(r.slice(pre.length));
+}
+function rollExample(){
+  return CONFIG.rollPrefix + "123456789".slice(0, CONFIG.rollDigits);
+}
+
 function validate(){
   let first = null;
   const fail = (el,msg)=>{ const f = el.closest(".field")||el; setError(f,msg); if(!first) first=f; };
 
   if(!$("#name").value.trim()) fail($("#name"), "We need a name for the list.");
-  if(!$("#roll").value.trim()) fail($("#roll"), "Roll number, please.");
+  const roll = $("#roll").value.trim();
+  if(!roll) fail($("#roll"), "Roll number, please.");
+  else if(!rollOk(roll)) fail($("#roll"), "Use the format " + rollExample() + ".");
   if(!/^\d{10}$/.test($("#phone").value.replace(/\D/g,"").replace(/^91(?=\d{10}$)/,"")))
     fail($("#phone"), "Ten digits, no country code.");
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("#email").value.trim()))
-    fail($("#email"), "That email doesn't look right.");
+  const email  = $("#email").value.trim().toLowerCase();
+  const suffix = "@" + CONFIG.emailDomain.toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+$/.test(email) || !email.endsWith(suffix))
+    fail($("#email"), "Use your institute email — it has to end in " + suffix + ".");
 
   if(performing === null)    fail($("#perfYN"), "Yes or no?");
   if(volunteering === null)  fail($("#volYN"),  "Yes or no?");
@@ -774,7 +794,7 @@ function collect(){
   const v = id => ($("#"+id)?.value || "").trim();
   return {
     name:  v("name"),
-    roll:  v("roll"),
+    roll:  v("roll").toUpperCase(),
     phone: v("phone").replace(/\D/g,"").replace(/^91(?=\d{10}$)/,""),
     email: v("email").toLowerCase(),
     performing:   performing   ? "Yes" : "No",
@@ -807,12 +827,21 @@ async function send(){
   btn.disabled = true; btn.textContent = "Saving…";
   $("#formError").classList.add("hidden");
 
+  // Apps Script takes a few seconds: it locks the sheet, scans for your email,
+  // writes the row and sends the notification mail before it answers. Say so
+  // rather than sitting on "Saving..." and looking stuck.
+  const steps = [[4000,"Still saving…"],[10000,"Google is being slow…"]];
+  const ticks = steps.map(([ms,txt]) => setTimeout(()=>{ btn.textContent = txt; }, ms));
+  const ctl   = new AbortController();
+  const bail  = setTimeout(()=>ctl.abort(), 30000);
+
   const data = collect();
   try{
     const res = await fetch(CONFIG.endpoint, {
       method:"POST",
       headers:{"Content-Type":"text/plain;charset=utf-8"},  // avoids a CORS preflight
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: ctl.signal
     });
     const out = await res.json();
     if(!out || out.ok !== true) throw new Error("rejected");
@@ -820,6 +849,7 @@ async function send(){
   }catch(err){
     showFailure();
   }finally{
+    ticks.forEach(clearTimeout); clearTimeout(bail);
     sending = false;
     btn.disabled = false; btn.textContent = label;
   }
@@ -840,12 +870,6 @@ $("#copyBtn").addEventListener("click", async ()=>{
 });
 
 /* ===== the payoff ===== */
-function hash4(str){
-  let h = 2166136261;
-  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,16777619) >>> 0; }
-  return h.toString(36).toUpperCase().padStart(4,"0").slice(-4);
-}
-
 function showTicket(d){
   $("#signupForm").classList.add("hidden");
   $("#ticketWrap").classList.remove("hidden");
@@ -855,7 +879,6 @@ function showTicket(d){
   if(d.acts) roles.push(...d.acts.split(", ").slice(0,3));
   if(d.volunteering === "Yes") roles.push("Volunteer");
   $("#tRoles").innerHTML = roles.map(r=>`<span>${esc(r)}</span>`).join("");
-  $("#tCode").textContent = "F26-" + hash4(d.email + d.roll);
 
   $("#sticky").classList.remove("show");
   $("#ticketWrap").scrollIntoView({behavior:"smooth", block:"start"});
