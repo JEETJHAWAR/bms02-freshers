@@ -399,7 +399,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
       <h2 class="h2 amber">Volunteer<i>.</i></h2>
       <p class="lede">These are the jobs that need doing on the night.</p>
       <ul class="tags" id="roles"></ul>
-      <p class="note"><strong>You don't have to pick one.</strong> Just say you're in and tell us when you're free — we'll assign you a job that fits your availability and let you know a few days before.</p>
+      <p class="note"><strong>You don't have to pick one.</strong> Just say you're in — we'll assign you a job and let you know a few days before.</p>
     </div>
   </div>
 </section>
@@ -503,19 +503,6 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
           </div>
           <div class="err hidden"></div>
         </div>
-
-        <div class="reveal hidden" id="volDetails">
-          <div class="field">
-            <span class="field-label">When are you free? <span class="req">*</span></span>
-            <span class="hint">Pick everything that works. We'll assign your job from this.</span>
-            <div class="chips amber" id="availChips" role="group" aria-label="Availability"></div>
-            <div class="err hidden"></div>
-          </div>
-          <div class="field">
-            <label for="volNotes">Anything you're good at, or can bring?</label>
-            <textarea id="volNotes"></textarea>
-          </div>
-        </div>
       </fieldset>
 
       <div class="submit-row">
@@ -555,7 +542,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
         <ol>
           <li><strong>We'll message you on WhatsApp within 48 hours</strong> with your slot or your job.</li>
           <li><strong>Performing?</strong> Send your music across early — chasing tracks on the day is how sound checks fall apart.</li>
-          <li><strong>Volunteering?</strong> We'll assign you something that fits the times you gave us.</li>
+          <li><strong>Volunteering?</strong> We'll assign you a job and tell you when to turn up.</li>
         </ol>
         <div class="row">
           <a class="btn amber" id="tWa" href="#" target="_blank" rel="noopener">Message the organisers</a>
@@ -625,8 +612,6 @@ const ROLES = [
   "Prizes","Clean-up"
 ];
 
-const AVAILABILITY = ["Day before","Morning of the event","During the event"];
-
 /* =====================================================================
    3. BUILD
    ===================================================================== */
@@ -649,7 +634,6 @@ $("#roles").innerHTML = ROLES.map(r=>`<li>${esc(r)}</li>`).join("");
 
 const chipHTML = v=>`<button type="button" class="chip" data-val="${esc(v)}" aria-pressed="false">${esc(v)}</button>`;
 $("#actChips").innerHTML   = ACTS.map(([n])=>chipHTML(n)).join("");
-$("#availChips").innerHTML = AVAILABILITY.map(chipHTML).join("");
 
 /* =====================================================================
    4. INTERACTIONS
@@ -671,14 +655,14 @@ function wireYesNo(groupSel, revealSel, set){
       const v = btn.dataset.v === "yes";
       set(v);
       $$(".yn", $(groupSel)).forEach(b=>b.setAttribute("aria-pressed", String(b===btn)));
-      $(revealSel).classList.toggle("hidden", !v);
+      if(revealSel) $(revealSel).classList.toggle("hidden", !v);
       clearError(btn.closest(".field"));
       updateButton();
     });
   });
 }
 wireYesNo("#perfYN", "#perfDetails", v=>performing = v);
-wireYesNo("#volYN",  "#volDetails",  v=>volunteering = v);
+wireYesNo("#volYN",  null,           v=>volunteering = v);
 
 function updateButton(){
   $("#submitBtn").textContent =
@@ -731,7 +715,6 @@ function validate(){
   if(volunteering === null)  fail($("#volYN"),  "Yes or no?");
 
   if(performing && !picked("#actChips").length)      fail($("#actChips"), "Pick at least one.");
-  if(volunteering && !picked("#availChips").length)  fail($("#availChips"), "Tell us when you're free.");
 
   if(performing === false && volunteering === false)
     fail($("#volYN"), "Pick yes to at least one — otherwise there's nothing to sign up for.");
@@ -754,8 +737,6 @@ function collect(){
     duration:     performing   ? v("duration") : "",
     actNotes:     performing   ? v("actNotes") : "",
     volunteering: volunteering ? "Yes" : "No",
-    availability: volunteering ? picked("#availChips").join(", ") : "",
-    volNotes:     volunteering ? v("volNotes") : "",
     website: v("website")   // honeypot
   };
 }
@@ -855,7 +836,6 @@ $("#againBtn").addEventListener("click", ()=>{
   $$(".yn").forEach(b=>b.setAttribute("aria-pressed","false"));
   performing = volunteering = null;
   $("#perfDetails").classList.add("hidden");
-  $("#volDetails").classList.add("hidden");
   updateButton();
   $("#ticketWrap").classList.add("hidden");
   $("#signupForm").classList.remove("hidden");
