@@ -38,13 +38,13 @@ const CONFIG = {
 
   hostBatch:     "BMS-01",
   year:          "2026",
-  eventDate:     "Sun 6 September",
+  eventDate:     "Sun 20 September",
   eventTime:     "5:30 PM onwards",
   venue:         "IIMK Kochi Campus",
-  deadline:      "Sunday 30 August",
-  deadlineShort: "Sign-ups close 30 Aug",
+  deadline:      "Thursday 10 September",
+  deadlineShort: "Sign-ups close 10 Sept",
 
-  contactName:     "Jeet",
+  contactName:     "Students' Council",
   contactWhatsApp: "919XXXXXXXXX",   // country code + number, digits only, no +
 
   showCounter: true
