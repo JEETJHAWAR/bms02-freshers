@@ -1,7 +1,9 @@
 # Project notes
 
 A one-page sign-up site for the BMS-02 Freshers event at IIM Kozhikode, Kochi campus.
-Students fill it in to say whether they want to **perform**, **volunteer**, or both.
+BMS-02 are the freshers (the audience). The **senior batch, BMS-01, hosts the event
+and fills the stage** — so the form is filled by BMS-01 students, saying whether they
+want to **perform**, **volunteer**, or both (roll validation only accepts `BMS/01/…`).
 Answers go to a private Google Sheet.
 
 ## Files
@@ -11,7 +13,7 @@ Answers go to a private Google Sheet.
 | `index.html` | The entire site — HTML, CSS and JS in one file. Everything lives here. |
 | `apps-script.gs` | Backend. Gets pasted into Google Apps Script, not served by the site. |
 | `fonts/` | Three self-hosted WOFF2 fonts. Do not delete — there is no CDN fallback. |
-| `images/` | `confetti.jpg` is the hero background. `cover.jpg` is the WhatsApp link preview. |
+| `images/` | `004.jpeg` is the hero background, `images.png` the IIMK crest, `002/003.jpeg` section backgrounds, `005/006.jpeg` collage shots, `cover.jpg` the WhatsApp link preview. Only `001.jpeg` is unused. |
 | `SETUP.md` | Human-facing setup and publishing steps. |
 
 ## Where to make changes
