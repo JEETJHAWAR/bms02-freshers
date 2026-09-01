@@ -85,8 +85,9 @@ function saveSignup(body) {
     try { lock.releaseLock(); } catch (ignore) {}
   }
 
-  // outside the lock: sending the email must not hold up other requests
+  // outside the lock: sending the emails must not hold up other requests
   notify(body, wasUpdate);
+  confirmMail(body, wasUpdate);
   return json({ ok: true });
 }
 
@@ -218,6 +219,29 @@ function notify(body, wasUpdate) {
        'Acts:      ' + (body.acts || '-'),
        'Available: ' + (body.availability || '-')].join('\n'));
   } catch (ignore) {}
+}
+
+/** Confirmation mail to the person who signed up. */
+function confirmMail(body, wasUpdate) {
+  try {
+    const what = [];
+    if (body.performing   === 'Yes') what.push('perform' + (body.acts ? ' (' + body.acts + ')' : ''));
+    if (body.volunteering === 'Yes') what.push('volunteer');
+    MailApp.sendEmail({
+      to: String(body.email),
+      name: 'BMS-02 Freshers',
+      subject: (wasUpdate ? 'Updated — ' : '') + "You're on the list · Freshers " + (body.year || ''),
+      body:
+        'Hi ' + body.name + ',\n\n' +
+        (wasUpdate
+          ? 'Your sign-up has been updated. Here is where it stands now:\n\n'
+          : 'You are on the list for Freshers' + (body.eventDate ? ' — ' + body.eventDate : '') + '.\n\n') +
+        'You signed up to ' + (what.join(' and ') || 'help out') + '.\n\n' +
+        'The organisers will contact you on WhatsApp with your slot or your job.\n' +
+        'Change of plans? Submit the form again with this email — it replaces your old answers.\n\n' +
+        '— BMS-01 · Students’ Council'
+    });
+  } catch (ignore) {}   // over quota or a bad address — the sign-up itself is already saved
 }
 
 function json(obj) {

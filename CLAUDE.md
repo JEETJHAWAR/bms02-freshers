@@ -41,7 +41,11 @@ Everything editable is in three blocks near the bottom of `index.html`, inside `
   upsert key). Exports are client-side: CSV via a Blob, PDF via `print()` and the
   `@media print` styles. The plaintext admin password must **never** be committed
   anywhere in this repo.
-- `showTicket()` renders the confirmation ticket. `hash4()` makes the pass code.
+- `showTicket()` renders the confirmation ticket; `ticketPNG()` redraws it on a
+  canvas for the PNG download (no libraries — keep it in sync with the ticket design),
+  and "Save as PDF" is `print()` plus the `body.print-ticket` print CSS.
+- Apps Script emails a confirmation to the signer (`confirmMail`) and an alert to
+  `NOTIFY_EMAIL`. Free Gmail ≈100 recipients/day across both.
 - The two yes/no groups set `performing` and `volunteering` (both start as `null`,
   which is how validation distinguishes "unanswered" from "no").
 

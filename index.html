@@ -262,10 +262,10 @@ fieldset > .grid2:last-child,.reveal > .grid2:last-child{margin-bottom:0}
 .after{margin-top:26px}
 .after h4{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--muted-2);font-weight:400;margin:0 0 12px}
-.after ol{margin:0 0 22px;padding-left:20px;color:var(--muted);font-size:.95rem}
-.after li{margin-bottom:8px}
+.after p{margin:0 0 22px;color:var(--muted);font-size:.95rem;max-width:52ch}
 .after strong{color:var(--paper);font-weight:600}
 .after .row{display:flex;gap:12px;flex-wrap:wrap}
+.dl-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 
 /* ===== FOOTER ===== */
 footer{border-top:1px solid var(--line);padding-block:40px 110px}
@@ -301,6 +301,16 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 
 .nojs{background:var(--amber-dim);border:1px solid var(--amber);border-radius:12px;padding:20px 22px}
 .nojs p{margin:0;font-size:.95rem;color:var(--paper)}
+
+/* ===== PRINT: the "Save as PDF" ticket ===== */
+@media print{
+  body.print-ticket header,body.print-ticket section:not(#signup),body.print-ticket footer,
+  body.print-ticket .sticky,body.print-ticket #signup .rise,body.print-ticket #signupForm,
+  body.print-ticket .dl-row,body.print-ticket .after{display:none !important}
+  body.print-ticket{background:#fff}
+  body.print-ticket .ticket{width:420px;margin:24px auto;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 
 /* ===== MOTION ===== */
 .rise{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1)}
@@ -545,13 +555,14 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
         </div>
       </div>
 
+      <div class="row dl-row">
+        <button type="button" class="mini" id="pngBtn">Download PNG</button>
+        <button type="button" class="mini" id="pdfBtn">Save as PDF</button>
+      </div>
+
       <div class="after">
         <h4>What happens next</h4>
-        <ol>
-          <li><strong>We'll message you on WhatsApp within 48 hours</strong> with your slot or your job.</li>
-          <li><strong>Performing?</strong> Send your music across early — chasing tracks on the day is how sound checks fall apart.</li>
-          <li><strong>Volunteering?</strong> We'll assign you a job and tell you when to turn up.</li>
-        </ol>
+        <p>The organisers will contact you on WhatsApp with your slot or your job — nothing else to do. A confirmation email is on its way too.</p>
         <div class="row">
           <a class="btn amber" id="tWa" href="#" target="_blank" rel="noopener">Message the organisers</a>
           <button type="button" class="btn ghost" id="againBtn">Sign up someone else</button>
@@ -748,6 +759,8 @@ function collect(){
     duration:     performing   ? v("duration") : "",
     actNotes:     performing   ? v("actNotes") : "",
     volunteering: volunteering ? "Yes" : "No",
+    year: CONFIG.year,            // only used in the confirmation email,
+    eventDate: CONFIG.eventDate,  // not stored in the sheet
     website: v("website")   // honeypot
   };
 }
@@ -826,19 +839,147 @@ $("#copyBtn").addEventListener("click", async ()=>{
 });
 
 /* ===== the payoff ===== */
+let lastTicket = null;
+
+function ticketRoles(d){
+  const r = [];
+  if(d.acts) r.push(...d.acts.split(", ").slice(0,3));
+  if(d.volunteering === "Yes") r.push("Volunteer");
+  return r;
+}
+
 function showTicket(d){
+  lastTicket = d;
   $("#signupForm").classList.add("hidden");
   $("#ticketWrap").classList.remove("hidden");
   $("#tName").textContent = d.name;
 
-  const roles = [];
-  if(d.acts) roles.push(...d.acts.split(", ").slice(0,3));
-  if(d.volunteering === "Yes") roles.push("Volunteer");
-  $("#tRoles").innerHTML = roles.map(r=>`<span>${esc(r)}</span>`).join("");
+  $("#tRoles").innerHTML = ticketRoles(d).map(r=>`<span>${esc(r)}</span>`).join("");
 
   $("#sticky").classList.remove("show");
   $("#ticketWrap").scrollIntoView({behavior:"smooth", block:"start"});
   if(liveCount){ liveCount++; $("#countNum").textContent = liveCount; }
+}
+
+/* ===== download the ticket ===== */
+$("#pdfBtn").addEventListener("click", ()=>{
+  document.body.classList.add("print-ticket");
+  const done = ()=>document.body.classList.remove("print-ticket");
+  addEventListener("afterprint", done, {once:true});
+  print();
+  setTimeout(done, 1200);
+});
+
+$("#pngBtn").addEventListener("click", ()=>{
+  ticketPNG().catch(()=>alert("Couldn't render the pass — screenshot the ticket instead."));
+});
+
+function roundedPath(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);     ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+async function ticketPNG(){
+  const d = lastTicket; if(!d) return;
+  try{ await document.fonts.ready; }catch(ignore){}
+
+  const W=480, PAD=32, S=3;   // design width, padding, export scale
+  const disp = (wgt,px)=>wgt+" "+px+'px "Big Shoulders","Arial Narrow",sans-serif';
+  const mono = px=>'500 '+px+'px "DM Mono",Menlo,monospace';
+
+  const meas = document.createElement("canvas").getContext("2d");
+  const wrapText = (text,font,max)=>{
+    meas.font = font;
+    const out=[]; let cur="";
+    for(const w of String(text).split(/\s+/)){
+      const t = cur ? cur+" "+w : w;
+      if(!cur || meas.measureText(t).width <= max) cur = t; else { out.push(cur); cur = w; }
+    }
+    if(cur) out.push(cur);
+    return out;
+  };
+
+  const nameLines = wrapText(d.name.toUpperCase(), disp(700,30), W-2*PAD).slice(0,2);
+
+  meas.font = mono(12);
+  const chipRows=[]; let row=[], cx=PAD;
+  ticketRoles(d).forEach(r=>{
+    const w = Math.ceil(meas.measureText(r.toUpperCase()).width) + 26;
+    if(cx + w > W-PAD && row.length){ chipRows.push(row); row=[]; cx=PAD; }
+    row.push({t:r.toUpperCase(), w}); cx += w + 8;
+  });
+  if(row.length) chipRows.push(row);
+
+  const nameY=196, lineH=34, chipH=26, chipGap=8;
+  const chipsY = nameY + (nameLines.length-1)*lineH + 22;
+  const divY   = chipsY + (chipRows.length ? chipRows.length*(chipH+chipGap) : 0) + 26;
+  const H      = divY + 96;
+
+  const cv = document.createElement("canvas");
+  cv.width = W*S; cv.height = H*S;
+  const ctx = cv.getContext("2d");
+  ctx.scale(S,S);
+
+  const g = ctx.createLinearGradient(0,0,W*.55,H);
+  g.addColorStop(0,"#2D1549"); g.addColorStop(1,"#1B0C2E");
+  roundedPath(ctx,0,0,W,H,18);
+  ctx.fillStyle=g; ctx.fill();
+  ctx.strokeStyle="rgba(247,240,230,.24)"; ctx.lineWidth=1.5; ctx.stroke();
+
+  if("letterSpacing" in ctx) ctx.letterSpacing="2px";
+  ctx.fillStyle="#FFC24B"; ctx.font=mono(12);
+  ctx.fillText("YOU'RE ON THE LIST", PAD, 58);
+  if("letterSpacing" in ctx) ctx.letterSpacing="0px";
+
+  ctx.fillStyle="#F7F0E6"; ctx.font=disp(900,54);
+  ctx.fillText(String(CONFIG.hostBatch||"").toUpperCase(), PAD, 116);
+  ctx.fillStyle="#B7A6CB"; ctx.font=disp(700,32);
+  ctx.fillText(("FRESHERS "+CONFIG.year).trim(), PAD, 154);
+
+  ctx.fillStyle="#FF2E7E"; ctx.font=disp(700,30);
+  nameLines.forEach((l,i)=>ctx.fillText(l, PAD, nameY + i*lineH));
+
+  ctx.font=mono(12);
+  chipRows.forEach((r,ri)=>{
+    let x=PAD; const y=chipsY + ri*(chipH+chipGap);
+    r.forEach(c=>{
+      roundedPath(ctx,x,y,c.w,chipH,chipH/2);
+      ctx.fillStyle="rgba(255,255,255,.08)"; ctx.fill();
+      ctx.strokeStyle="rgba(247,240,230,.24)"; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle="#F7F0E6"; ctx.fillText(c.t, x+13, y+17);
+      x += c.w + 8;
+    });
+  });
+
+  ctx.setLineDash([7,7]);
+  ctx.strokeStyle="rgba(247,240,230,.24)"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(20,divY); ctx.lineTo(W-20,divY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  if("letterSpacing" in ctx) ctx.letterSpacing="1px";
+  ctx.font=mono(10); ctx.fillStyle="#8F7EA6";
+  ctx.fillText("DATE", PAD, divY+34);
+  ctx.fillText("VENUE", W/2+10, divY+34);
+  ctx.font=mono(13); ctx.fillStyle="#F7F0E6";
+  ctx.fillText(String(CONFIG.eventDate).toUpperCase(), PAD, divY+56);
+  ctx.fillText(String(CONFIG.venue).toUpperCase(), W/2+10, divY+56);
+  if("letterSpacing" in ctx) ctx.letterSpacing="0px";
+
+  // punch the two side notches clean through to transparency
+  ctx.globalCompositeOperation="destination-out";
+  ctx.beginPath(); ctx.arc(0,divY,14,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W,divY,14,0,Math.PI*2); ctx.fill();
+  ctx.globalCompositeOperation="source-over";
+
+  const blob = await new Promise(res=>cv.toBlob(res,"image/png"));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "freshers-pass-" + (d.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "ticket") + ".png";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
 }
 
 $("#againBtn").addEventListener("click", ()=>{

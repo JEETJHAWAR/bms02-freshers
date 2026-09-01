@@ -118,6 +118,12 @@ you're on.
 **Email alerts:** in Apps Script set `NOTIFY_EMAIL = 'you@example.com'`, save, then
 **Deploy → Manage deployments → pencil → Version: New version → Deploy**.
 
+**Confirmation emails:** everyone who signs up automatically gets a confirmation
+mail (sent from your Google account). Heads up: free Gmail caps scripts at about
+**100 recipients a day**, and your own alert copy counts too — if a rush of
+sign-ups is expected in one day, set `NOTIFY_EMAIL = ''` to halve the usage.
+A failed email never loses the sign-up; the row is already saved.
+
 > Any time you edit `apps-script.gs` you must redeploy as a **New version**, or the
 > site keeps running the old code. This catches everyone out once.
 
