@@ -11,6 +11,7 @@ Answers go to a private Google Sheet.
 | File | What it is |
 |---|---|
 | `index.html` | The entire site — HTML, CSS and JS in one file. Everything lives here. |
+| `admin.html` | Password-gated entries viewer for the organisers. Standalone; has its own copy of the endpoint URL — keep it in sync with `CONFIG.endpoint`. |
 | `apps-script.gs` | Backend. Gets pasted into Google Apps Script, not served by the site. |
 | `fonts/` | Three self-hosted WOFF2 fonts. Do not delete — there is no CDN fallback. |
 | `images/` | `004.jpeg` is the hero background, `images.png` the IIMK crest, `002/003.jpeg` section backgrounds, `005/006.jpeg` collage shots, `cover.jpg` the WhatsApp link preview. Only `001.jpeg` is unused. |
@@ -22,10 +23,10 @@ Everything editable is in three blocks near the bottom of `index.html`, inside `
 
 - **`CONFIG`** — date, time, venue, deadline, WhatsApp number, the Apps Script URL.
   Every date and name shown on the page reads from here via `data-cfg` attributes.
-- **`ACTS`** — array of `[name, duration]`. Drives *both* the running-order list in the
-  "Perform" section *and* the chips in the form. Edit once, both update.
+- **`ACTS`** — array of act names. Drives *both* the list in the "Perform" section
+  *and* the chips in the form (the form appends an extra "Other" chip on its own —
+  picking it makes the act-notes box required). Edit once, both update.
 - **`ROLES`** — volunteer job names. Display only; the form never asks people to pick one.
-- **`AVAILABILITY`** — the time slots volunteers choose from.
 
 ## How it works
 
@@ -34,6 +35,12 @@ Everything editable is in three blocks near the bottom of `index.html`, inside `
   Apps Script cannot answer. Do not change it to `application/json`.
 - Apps Script upserts by email, so resubmitting updates the row instead of duplicating.
 - A hidden `#website` input is a honeypot. Bots fill it, humans don't; filled = discarded.
+- `admin.html` POSTs `{action:"admin", pass}` to the same endpoint; Apps Script
+  compares the SHA-256 of `pass` against `ADMIN_PASS_SHA256` and returns all rows.
+  `{action:"admin-delete", pass, email}` deletes that person's row (email is the
+  upsert key). Exports are client-side: CSV via a Blob, PDF via `print()` and the
+  `@media print` styles. The plaintext admin password must **never** be committed
+  anywhere in this repo.
 - `showTicket()` renders the confirmation ticket. `hash4()` makes the pass code.
 - The two yes/no groups set `performing` and `volunteering` (both start as `null`,
   which is how validation distinguishes "unanswered" from "no").

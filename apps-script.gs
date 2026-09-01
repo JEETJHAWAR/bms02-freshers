@@ -49,6 +49,8 @@ function doPost(e) {
     lock.waitLock(20000);
 
     const body = JSON.parse(e.postData.contents);
+    if (body.action === 'admin')        return adminList(body.pass);
+    if (body.action === 'admin-delete') return adminDelete(body.pass, body.email);
     if (body.website) return json({ ok: true });          // honeypot: a bot
     if (!body.name || !body.email) return json({ ok: false, error: 'Missing name or email' });
 
@@ -134,6 +136,38 @@ function makeView(ss, name, formula, headers) {
   s.setFrozenRows(1);
   s.getRange(2, 1).setFormula(formula);
   for (let i = 1; i <= headers.length; i++) s.setColumnWidth(i, 165);
+}
+
+
+/* ================= admin page: the full list ================= */
+/**
+ * Only the SHA-256 of the admin password lives here — admin.html sends the
+ * password, we hash it and compare. The password itself is never in the repo.
+ */
+const ADMIN_PASS_SHA256 = 'c17938773a4d4bef02efd39d4ccbd3ad9d9ff6965b5799c5760c2714a2daad7f';
+
+function adminList(pass) {
+  if (sha256hex(String(pass || '')) !== ADMIN_PASS_SHA256)
+    return json({ ok: false, error: 'Wrong password' });
+  const sheet = getSheet();
+  const last  = sheet.getLastRow();
+  const rows  = last < 2 ? [] : sheet.getRange(2, 1, last - 1, COLS.length).getDisplayValues();
+  return json({ ok: true, keys: COLS.map(function (c) { return c[1]; }), rows: rows });
+}
+
+function adminDelete(pass, email) {
+  if (sha256hex(String(pass || '')) !== ADMIN_PASS_SHA256)
+    return json({ ok: false, error: 'Wrong password' });
+  const sheet = getSheet();
+  const at = findRowByEmail(sheet, String(email || '').trim().toLowerCase());
+  if (at < 2) return json({ ok: false, error: 'Not found' });
+  sheet.deleteRow(at);
+  return json({ ok: true });
+}
+
+function sha256hex(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8)
+    .map(function (b) { return ((b & 0xFF) + 0x100).toString(16).slice(1); }).join('');
 }
 
 

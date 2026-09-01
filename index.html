@@ -136,15 +136,13 @@ h1 .p{background:var(--amber)} h1 .p2{background:var(--hot)}
   border:2px solid var(--ink-2);filter:saturate(.85);display:block}
 .cuts img+img{margin-left:-24px}
 
-/* running-order list: name … slot */
+/* running-order list */
 .menu{margin-top:30px;column-gap:clamp(28px,5vw,64px)}
 @media(min-width:760px){.menu{columns:2}}
 .menu-item{display:flex;align-items:baseline;gap:10px;padding:11px 0;
   border-bottom:1px solid var(--line);break-inside:avoid}
 .menu-name{font-family:var(--disp);text-transform:uppercase;font-weight:700;
   font-size:1.32rem;line-height:1;white-space:nowrap}
-.menu-fill{flex:1;border-bottom:1px dotted rgba(247,240,230,.22);transform:translateY(-4px)}
-.menu-slot{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--hot);white-space:nowrap}
 
 /* volunteer role tags */
 .tags{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:28px 0 0;padding:0}
@@ -385,7 +383,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
     <div class="rise">
       <p class="eyebrow">Option one</p>
       <h2 class="h2">Perform<i>.</i></h2>
-      <p class="lede">No auditions, nobody gets cut. Pick anything below. Times are rough guides, not rules.</p>
+      <p class="lede">No auditions, nobody gets cut. Pick anything below — and if yours isn't on the list, there's an <strong>Other</strong> in the form.</p>
     </div>
     <div class="menu rise" id="menu"></div>
   </div>
@@ -487,7 +485,8 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 
           <div class="field">
             <label for="actNotes">Anything we should know?</label>
-            <textarea id="actNotes" placeholder="Music you'll need, props, a mic, who else is in your group, or what your act actually is if it's not on the list."></textarea>
+            <textarea id="actNotes" placeholder="Music you'll need, props, a mic, who else is in your group, or what your act actually is if you picked Other."></textarea>
+            <div class="err hidden"></div>
           </div>
         </div>
       </fieldset>
@@ -595,15 +594,15 @@ const CONFIG = {
 };
 
 /* =====================================================================
-   2. CONTENT — edit these three lists to change the page AND the form.
+   2. CONTENT — edit these two lists to change the page AND the form.
    ===================================================================== */
 const ACTS = [
-  ["Group dance",   "4–6 min"],
-  ["Solo dance",    "2–4 min"],
-  ["Singing",       "3–4 min"],
-  ["Band / music",  "6–8 min"],
-  ["Instrumental",  "3–5 min"],
-  ["Stand-up",      "4–6 min"]
+  "Group dance",
+  "Solo dance",
+  "Singing",
+  "Band / music",
+  "Instrumental",
+  "Stand-up"
 ];
 
 const ROLES = [
@@ -626,14 +625,14 @@ $("#email").placeholder = "you@" + CONFIG.emailDomain;
 const waHref = "https://wa.me/" + CONFIG.contactWhatsApp;
 ["footWa","tWa","waFallback"].forEach(id=>{ const el=$("#"+id); if(el) el.href = waHref; });
 
-$("#menu").innerHTML = ACTS.map(([n,s])=>
-  `<div class="menu-item"><span class="menu-name">${esc(n)}</span><span class="menu-fill"></span><span class="menu-slot">${esc(s)}</span></div>`
+$("#menu").innerHTML = ACTS.map(n=>
+  `<div class="menu-item"><span class="menu-name">${esc(n)}</span></div>`
 ).join("");
 
 $("#roles").innerHTML = ROLES.map(r=>`<li>${esc(r)}</li>`).join("");
 
 const chipHTML = v=>`<button type="button" class="chip" data-val="${esc(v)}" aria-pressed="false">${esc(v)}</button>`;
-$("#actChips").innerHTML   = ACTS.map(([n])=>chipHTML(n)).join("");
+$("#actChips").innerHTML   = ACTS.concat("Other").map(n=>chipHTML(n)).join("");
 
 /* =====================================================================
    4. INTERACTIONS
@@ -715,6 +714,9 @@ function validate(){
   if(volunteering === null)  fail($("#volYN"),  "Yes or no?");
 
   if(performing && !picked("#actChips").length)      fail($("#actChips"), "Pick at least one.");
+
+  if(performing && picked("#actChips").includes("Other") && !$("#actNotes").value.trim())
+    fail($("#actNotes"), "You picked Other — tell us what you're planning in this box.");
 
   if(performing === false && volunteering === false)
     fail($("#volYN"), "Pick yes to at least one — otherwise there's nothing to sign up for.");

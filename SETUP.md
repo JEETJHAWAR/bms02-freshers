@@ -63,9 +63,9 @@ and a row lands in your sheet, the hard part is over.
 1. Create a repo: **New repository** → `bms02-freshers` → **Public** → Create.
    It has to be public — free GitHub Pages only serves public repos. The *page* is
    public; the *responses* are not.
-2. **Add file → Upload files**. Drag in everything: `index.html`, `SETUP.md`,
-   `CLAUDE.md`, `LICENSE-FONTS.txt`, and the `images` and `fonts` **folders**.
-   Commit.
+2. **Add file → Upload files**. Drag in everything: `index.html`, `admin.html`,
+   `SETUP.md`, `CLAUDE.md`, `LICENSE-FONTS.txt`, and the `images` and `fonts`
+   **folders**. Commit.
 3. **Settings → Pages** → Source: **Deploy from a branch**, branch **main**,
    folder **/ (root)**. Save.
 4. Wait 1–2 minutes. Your link appears: `https://YOURNAME.github.io/bms02-freshers/`
@@ -98,6 +98,20 @@ Then do step 3 above once. After that every update is
 Open your Google Sheet. Three tabs: **Responses** (everything), **Performers**,
 **Volunteers** — the last two filter themselves.
 
+**Admin page:** `https://YOURNAME.github.io/bms02-freshers/admin.html` shows every
+entry on your phone — stats, performer/volunteer tabs, search, WhatsApp links.
+The ✕ on a card deletes that entry from the sheet (with a confirm — there's no
+undo). **Excel (CSV)** downloads whichever tab you're looking at as a file Excel
+opens directly; **Save PDF** opens the print dialog, where "Save as PDF" is an
+option on both phone and laptop. It asks for the admin password. The password is **not** written anywhere in this
+repo; only its SHA-256 fingerprint lives in `apps-script.gs` (`ADMIN_PASS_SHA256`),
+and the script checks it server-side. To change the password, run this once in the
+Apps Script editor and paste the result into `ADMIN_PASS_SHA256`:
+
+```js
+function newHash(){ Logger.log(sha256hex('your-new-password')); }
+```
+
 **Excel:** `File → Download → Microsoft Excel (.xlsx)`. Downloads whichever tab
 you're on.
 
@@ -124,7 +138,8 @@ you're on.
 
 ## Privacy
 
-The endpoint URL is visible in the page source. All it can do is add a row — it
-can't read anything back except a total count, which powers the "47 signed up" pill.
-Set `showCounter: false` to switch that off. If you ever get spammed, delete the
-deployment and create a new one; the old URL dies instantly.
+The endpoint URL is visible in the page source. Without the admin password all it
+can do is add a row and report a total count, which powers the "47 signed up" pill.
+Set `showCounter: false` to switch that off. The full list only comes back to
+whoever knows the admin password (see *Getting responses out*). If you ever get
+spammed, delete the deployment and create a new one; the old URL dies instantly.
