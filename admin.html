@@ -59,6 +59,7 @@ h1 i{font-style:normal;color:var(--hot)}
 .btn:hover{transform:translateY(-2px);filter:brightness(1.07)}
 .btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
 .err{color:#FF8FB4;font-size:.86rem;margin-top:10px;font-family:var(--mono)}
+.wake{margin:14px 0 0;font-size:.82rem;color:var(--muted-2);line-height:1.5}
 
 /* ===== stats ===== */
 .stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
@@ -147,6 +148,7 @@ h1 i{font-style:normal;color:var(--hot)}
     <input type="password" id="pass" autocomplete="current-password" autofocus>
     <div class="err hidden" id="gateErr"></div>
     <button type="submit" class="btn" id="gateBtn">Open the list</button>
+    <p class="wake">Runs on Google's free tier — checking takes a few seconds.</p>
   </form>
 
   <!-- the list -->
@@ -185,6 +187,9 @@ const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let PASS = null, ENTRIES = [], tab = "all";
+
+// wake Google's server while the password is being typed — shaves the cold start
+fetch(ENDPOINT + "?stats=1").catch(()=>{});
 
 $("#gate").addEventListener("submit", e=>{ e.preventDefault(); load($("#pass").value); });
 $("#refresh").addEventListener("click", ()=>load(PASS));

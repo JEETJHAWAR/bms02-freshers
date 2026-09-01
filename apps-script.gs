@@ -44,15 +44,24 @@ const EMAIL_COL = 5;   // column E
 
 /* ================= receive a sign-up ================= */
 function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (body.action === 'admin')        return adminList(body.pass);   // read-only: no lock
+    if (body.action === 'admin-delete') return adminDelete(body.pass, body.email);
+    return saveSignup(body);
+  } catch (err) {
+    return json({ ok: false, error: String(err) });
+  }
+}
+
+function saveSignup(body) {
+  if (body.website) return json({ ok: true });          // honeypot: a bot
+  if (!body.name || !body.email) return json({ ok: false, error: 'Missing name or email' });
+
   const lock = LockService.getScriptLock();
+  let wasUpdate = false;
   try {
     lock.waitLock(20000);
-
-    const body = JSON.parse(e.postData.contents);
-    if (body.action === 'admin')        return adminList(body.pass);
-    if (body.action === 'admin-delete') return adminDelete(body.pass, body.email);
-    if (body.website) return json({ ok: true });          // honeypot: a bot
-    if (!body.name || !body.email) return json({ ok: false, error: 'Missing name or email' });
 
     const sheet = getSheet();
     const now   = new Date();
@@ -66,20 +75,19 @@ function doPost(e) {
     // same email again = update, not a duplicate row
     const at = findRowByEmail(sheet, email);
     if (at > 0) {
+      wasUpdate = true;
       row[0] = sheet.getRange(at, 1).getValue();          // keep the first timestamp
       sheet.getRange(at, 1, 1, row.length).setValues([row]);
     } else {
       sheet.appendRow(row);
     }
-
-    notify(body, at > 0);
-    return json({ ok: true });
-
-  } catch (err) {
-    return json({ ok: false, error: String(err) });
   } finally {
     try { lock.releaseLock(); } catch (ignore) {}
   }
+
+  // outside the lock: sending the email must not hold up other requests
+  notify(body, wasUpdate);
+  return json({ ok: true });
 }
 
 
@@ -158,10 +166,16 @@ function adminList(pass) {
 function adminDelete(pass, email) {
   if (sha256hex(String(pass || '')) !== ADMIN_PASS_SHA256)
     return json({ ok: false, error: 'Wrong password' });
-  const sheet = getSheet();
-  const at = findRowByEmail(sheet, String(email || '').trim().toLowerCase());
-  if (at < 2) return json({ ok: false, error: 'Not found' });
-  sheet.deleteRow(at);
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+    const sheet = getSheet();
+    const at = findRowByEmail(sheet, String(email || '').trim().toLowerCase());
+    if (at < 2) return json({ ok: false, error: 'Not found' });
+    sheet.deleteRow(at);
+  } finally {
+    try { lock.releaseLock(); } catch (ignore) {}
+  }
   return json({ ok: true });
 }
 

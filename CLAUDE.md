@@ -14,7 +14,7 @@ Answers go to a private Google Sheet.
 | `admin.html` | Password-gated entries viewer for the organisers. Standalone; has its own copy of the endpoint URL — keep it in sync with `CONFIG.endpoint`. |
 | `apps-script.gs` | Backend. Gets pasted into Google Apps Script, not served by the site. |
 | `fonts/` | Three self-hosted WOFF2 fonts. Do not delete — there is no CDN fallback. |
-| `images/` | `004.jpeg` is the hero background, `images.png` the IIMK crest, `002/003.jpeg` section backgrounds, `005/006.jpeg` collage shots, `cover.jpg` the WhatsApp link preview. Only `001.jpeg` is unused. |
+| `images/` | `004.jpeg` is the hero background, `images.png` the IIMK crest, `002/003.jpeg` section backgrounds, `005/006.jpeg` collage shots, `cover.jpg` the WhatsApp link preview. Only `001.jpeg` is unused. The photos are low-res (hero is 538px wide) — a CSS grain overlay (`--grain`) masks the upscaling; dropping in higher-res files with the same names is the real fix. |
 | `SETUP.md` | Human-facing setup and publishing steps. |
 
 ## Where to make changes
