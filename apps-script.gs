@@ -48,6 +48,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     if (body.action === 'admin')        return adminList(body.pass);   // read-only: no lock
     if (body.action === 'admin-delete') return adminDelete(body.pass, body.email);
+    if (body.action === 'admin-closed') return adminSetClosed(body.pass, body.closed);
     return saveSignup(body);
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -114,20 +115,35 @@ function doGet(e) {
  * reopen. No redeploy needed to flip it — this reads the cell on every request.
  * The tab creates itself on the first request after this code is deployed.
  */
+function settingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName('Settings');
+  if (!s) {
+    s = ss.insertSheet('Settings');
+    s.getRange('A1').setValue('Sign-ups closed?').setFontWeight('bold');
+    s.getRange('B1').insertCheckboxes();
+    s.getRange('A3').setValue('Tick B1 to close sign-ups. You can also do this from the admin page.')
+                    .setFontColor('#888');
+    s.setColumnWidth(1, 160);
+  }
+  return s;
+}
+
 function signupsClosed() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let s = ss.getSheetByName('Settings');
-    if (!s) {
-      s = ss.insertSheet('Settings');
-      s.getRange('A1').setValue('Sign-ups closed?').setFontWeight('bold');
-      s.getRange('B1').insertCheckboxes();
-      s.setColumnWidth(1, 160);
-    }
-    return s.getRange('B1').getValue() === true;
+    return settingsSheet().getRange('B1').getValue() === true;
   } catch (err) {
     return false;   // if anything is off, fail open — better than losing sign-ups
   }
+}
+
+/** Flip the switch from the admin page. */
+function adminSetClosed(pass, closed) {
+  if (sha256hex(String(pass || '')) !== ADMIN_PASS_SHA256)
+    return json({ ok: false, error: 'Wrong password' });
+  const want = (closed === true);
+  settingsSheet().getRange('B1').setValue(want);
+  return json({ ok: true, closed: want });
 }
 
 
@@ -186,7 +202,8 @@ function adminList(pass) {
   const sheet = getSheet();
   const last  = sheet.getLastRow();
   const rows  = last < 2 ? [] : sheet.getRange(2, 1, last - 1, COLS.length).getDisplayValues();
-  return json({ ok: true, keys: COLS.map(function (c) { return c[1]; }), rows: rows });
+  return json({ ok: true, keys: COLS.map(function (c) { return c[1]; }), rows: rows,
+                closed: signupsClosed() });
 }
 
 function adminDelete(pass, email) {

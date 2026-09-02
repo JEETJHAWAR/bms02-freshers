@@ -46,10 +46,16 @@ Everything editable is in three blocks near the bottom of `index.html`, inside `
   and "Save as PDF" is `print()` plus the `body.print-ticket` print CSS.
 - Apps Script emails a confirmation to the signer (`confirmMail`) and an alert to
   `NOTIFY_EMAIL`. Free Gmail ≈100 recipients/day across both.
-- Pause switch: a checkbox in the sheet's `Settings` tab, cell B1 (auto-created by
-  `signupsClosed()`). Ticked → `saveSignup` refuses with `{closed:true}` and
-  `?stats=1` reports `closed`, which makes the page call `showClosed()` — the form
-  swaps for the `#closedBox` notice. Flipping it needs no redeploy.
+- Pause switch: cell B1 of the sheet's `Settings` tab (created by `settingsSheet()`).
+  Flip it from the admin page's toggle (`{action:"admin-closed", pass, closed}`) or
+  by ticking the cell directly — same cell, so both stay in sync. Ticked →
+  `saveSignup` refuses with `{closed:true}` and `?stats=1` reports `closed`, which
+  makes the page call `showClosed()`. No redeploy needed to flip it.
+- `#closedBox` is hidden with the `hidden` **attribute**, not the `.hidden` class, so
+  the browser's own stylesheet hides it even if our CSS fails — otherwise the closed
+  notice can render alongside the live form and the page contradicts itself.
+  `showClosed()` must update *every* piece of "still open" copy together (hero chip,
+  `#heroCta`, `#footLead`, sticky bar); it is idempotent via `closedNow`.
 - The two yes/no groups set `performing` and `volunteering` (both start as `null`,
   which is how validation distinguishes "unanswered" from "no").
 

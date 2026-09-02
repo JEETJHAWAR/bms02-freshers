@@ -362,7 +362,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
     </div>
 
     <div class="hero-cta">
-      <a class="btn" href="#signup" id="heroCta">Sign me up</a>
+      <a class="btn" href="#signup">Sign me up</a>
       <a class="btn ghost" href="#perform">What can I do?</a>
       <span class="counter" id="counter"><i aria-hidden="true"></i><b id="countNum">0</b> signed up</span>
     </div>
@@ -436,11 +436,8 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
       <p class="lede">Only the organising team sees this. Changed your mind later? Submit again with the same email and it replaces your old answer.</p>
     </div>
 
-    <!-- Shown instead of the form when sign-ups are closed from the admin page.
-         Uses the hidden ATTRIBUTE, not the .hidden class: the browser's own
-         stylesheet hides it, so it can never show alongside the open form even
-         if our CSS fails to load. -->
-    <div class="closed" id="closedBox" hidden>
+    <!-- shown instead of the form when the Settings checkbox in the sheet is ticked -->
+    <div class="closed hidden" id="closedBox">
       <p class="eyebrow">Sign-ups closed</p>
       <h2 class="h2">That's a wrap<i>.</i></h2>
       <p>Sign-ups closed on <b data-cfg="deadline">Thursday 10 September</b>. The list is with the organisers and the run of show is being locked in.</p>
@@ -595,7 +592,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
     <p><b data-cfg="hostBatch">BMS-01</b> × <b>BMS-02</b><br>
        Bachelor of Management Studies<br>
        IIM Kozhikode</p>
-    <p><span id="footLead">Sign-ups close</span> <b data-cfg="deadline">Thursday 10 September</b><br>
+    <p>Sign-ups close <b data-cfg="deadline">Thursday 10 September</b><br>
        Questions → <a id="footWa" href="#" target="_blank" rel="noopener"><b data-cfg="contactName">the organisers</b></a></p>
   </div>
 </footer>
@@ -610,7 +607,7 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
    1. CONFIG — edit this block. Everything on the page reads from it.
    ===================================================================== */
 const CONFIG = {
-  endpoint: "https://script.google.com/macros/s/AKfycbyqCfRXTdjuUhr6cb1lTiIV6_8CIh5FPJw46gHj24WX9pgP7HpjVC4GMu_z_BIDFK3Zcg/exec",   // ends in /exec
+  endpoint: "PASTE_YOUR_URL_HERE",   // ends in /exec
 
   hostBatch:     "BMS-01",
   year:          "2026",
@@ -857,24 +854,12 @@ function showFailure(msg){
   box.scrollIntoView({behavior:"smooth", block:"center"});
 }
 
-/* The pause switch: the organisers closed sign-ups from the admin page.
-   Every bit of "you can still sign up" copy has to change together, or the page
-   contradicts itself -- hero chip, hero button, sticky bar and footer included. */
-let closedNow = false;
+/* the pause switch: the organisers ticked "Sign-ups closed?" in the sheet */
 function showClosed(){
-  if(closedNow) return;
-  closedNow = true;
-
   ["signupIntro","signupForm","formError","ticketWrap"].forEach(id=>$("#"+id).classList.add("hidden"));
-  $("#closedBox").hidden = false;
-
+  $("#closedBox").classList.remove("hidden");
   const st = $("#sticky"); if(st) st.remove();
-  const c  = $("#counter"); if(c) c.remove();
-
   $$('[data-cfg="deadlineShort"]').forEach(el=>el.textContent = "Sign-ups closed");
-  const lead = $("#footLead"); if(lead) lead.textContent = "Sign-ups closed";
-  const cta  = $("#heroCta");
-  if(cta){ cta.textContent = "Sign-ups closed"; cta.classList.add("ghost"); }
 }
 
 $("#copyBtn").addEventListener("click", async ()=>{
@@ -1065,21 +1050,19 @@ if("IntersectionObserver" in window){
 }
 
 let liveCount = 0;
-const dropCounter = ()=>{ const c = $("#counter"); if(c) c.remove(); };
-
 if(CONFIG.endpoint.indexOf("PASTE_YOUR") !== 0){
   fetch(CONFIG.endpoint + "?stats=1").then(r=>r.json()).then(d=>{
-    if(d && d.closed){ showClosed(); return; }   // showClosed drops the counter itself
+    if(d && d.closed) showClosed();
     if(CONFIG.showCounter && d && d.ok && d.count > 0){
       liveCount = d.count;
       $("#countNum").textContent = d.count;
       $("#counter").classList.add("on");
     }else{
-      dropCounter();
+      $("#counter").remove();
     }
-  }).catch(dropCounter);
+  }).catch(()=>$("#counter").remove());
 }else{
-  dropCounter();
+  $("#counter").remove();
 }
 </script>
 </body>

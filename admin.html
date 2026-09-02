@@ -70,6 +70,25 @@ h1 i{font-style:normal;color:var(--hot)}
   text-transform:uppercase;color:var(--muted-2)}
 .stat.hot b{color:var(--hot)} .stat.amber b{color:var(--amber)}
 
+/* ===== the pause switch ===== */
+.switchbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:14px 18px;margin:0 0 18px}
+.switchbar.shut{border-color:var(--hot);background:var(--hot-dim)}
+.sw-label{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted-2)}
+.sw-label b{color:var(--paper);font-weight:500}
+.switchbar.shut .sw-label b{color:var(--hot)}
+.sw-hint{margin:4px 0 0;font-size:.84rem;color:var(--muted-2)}
+.sw{appearance:none;border:0;cursor:pointer;flex:none;width:62px;height:34px;
+  border-radius:999px;background:rgba(0,0,0,.4);box-shadow:inset 0 0 0 1px var(--line-2);
+  padding:4px;transition:background .18s ease,box-shadow .18s ease}
+.sw .knob{display:block;width:26px;height:26px;border-radius:50%;background:var(--muted);
+  transition:transform .18s ease,background .18s ease}
+.sw[aria-checked=true]{background:var(--hot-dim);box-shadow:inset 0 0 0 1.5px var(--hot)}
+.sw[aria-checked=true] .knob{transform:translateX(28px);background:var(--hot)}
+.sw[disabled]{opacity:.5;cursor:not-allowed}
+
 /* ===== controls ===== */
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
@@ -119,7 +138,7 @@ h1 i{font-style:normal;color:var(--hot)}
 /* ===== print (the "Save as PDF" button) ===== */
 @media print{
   body{background:#fff;color:#000}
-  .gate,.controls,.footnote,.del{display:none !important}
+  .gate,.controls,.footnote,.del,.switchbar{display:none !important}
   .eyebrow,.eyebrow b,.sub{color:#555}
   h1 i{color:#000}
   .stat{border:1px solid #bbb;background:#fff}
@@ -157,6 +176,16 @@ h1 i{font-style:normal;color:var(--hot)}
       <div class="stat"><b id="stTotal">0</b><span>Signed up</span></div>
       <div class="stat hot"><b id="stPerf">0</b><span>Performing</span></div>
       <div class="stat amber"><b id="stVol">0</b><span>Volunteering</span></div>
+    </div>
+
+    <div class="switchbar" id="switchbar">
+      <div>
+        <p class="sw-label">Sign-ups are <b id="swState">open</b></p>
+        <p class="sw-hint" id="swHint">People can still fill the form.</p>
+      </div>
+      <button type="button" class="sw" id="swBtn" role="switch" aria-checked="false">
+        <span class="knob"></span>
+      </button>
     </div>
 
     <div class="controls">
@@ -220,6 +249,7 @@ async function load(pass){
     $("#gate").classList.add("hidden");
     $("#panel").classList.remove("hidden");
     $("#subline").textContent = "Everyone who has signed up, straight from the sheet.";
+    paintSwitch(out.closed === true);
     stats(); render();
   }catch(err){
     gateFail(/Wrong password/i.test(err.message)
@@ -286,6 +316,44 @@ function card(x){
     </div>
   </div>`;
 }
+
+/* ===== the pause switch ===== */
+let CLOSED = false;
+
+function paintSwitch(closed){
+  CLOSED = closed;
+  $("#switchbar").classList.toggle("shut", closed);
+  $("#swBtn").setAttribute("aria-checked", String(closed));
+  $("#swState").textContent = closed ? "closed" : "open";
+  $("#swHint").textContent  = closed
+    ? "The site is showing the “That’s a wrap” notice — nobody can sign up."
+    : "People can still fill the form.";
+}
+
+$("#swBtn").addEventListener("click", async ()=>{
+  const want = !CLOSED;
+  const msg = want
+    ? "Close sign-ups?\n\nThe site will immediately stop accepting entries and show the “That's a wrap” notice instead of the form."
+    : "Re-open sign-ups?\n\nThe form goes back up straight away and people can sign up again.";
+  if(!confirm(msg)) return;
+
+  const b = $("#swBtn");
+  b.disabled = true;
+  try{
+    const r = await fetch(ENDPOINT, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({ action:"admin-closed", pass: PASS, closed: want })
+    });
+    const out = await r.json();
+    if(!out.ok) throw new Error(out.error || "rejected");
+    paintSwitch(out.closed === true);
+  }catch(err){
+    alert("Couldn't change it — " + err.message + ". Nothing was altered; try again.");
+  }finally{
+    b.disabled = false;
+  }
+});
 
 /* ===== delete an entry (removes the row from the sheet) ===== */
 $("#cards").addEventListener("click", async e=>{
