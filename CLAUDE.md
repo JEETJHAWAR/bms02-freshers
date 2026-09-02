@@ -46,6 +46,10 @@ Everything editable is in three blocks near the bottom of `index.html`, inside `
   and "Save as PDF" is `print()` plus the `body.print-ticket` print CSS.
 - Apps Script emails a confirmation to the signer (`confirmMail`) and an alert to
   `NOTIFY_EMAIL`. Free Gmail ≈100 recipients/day across both.
+- Pause switch: a checkbox in the sheet's `Settings` tab, cell B1 (auto-created by
+  `signupsClosed()`). Ticked → `saveSignup` refuses with `{closed:true}` and
+  `?stats=1` reports `closed`, which makes the page call `showClosed()` — the form
+  swaps for the `#closedBox` notice. Flipping it needs no redeploy.
 - The two yes/no groups set `performing` and `volunteering` (both start as `null`,
   which is how validation distinguishes "unanswered" from "no").
 

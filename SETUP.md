@@ -129,6 +129,17 @@ A failed email never loses the sign-up; the row is already saved.
 
 ---
 
+## Closing sign-ups (the pause switch)
+
+Your sheet has a **Settings** tab (it creates itself on the first visit after this
+update — or run `signupsClosed` once in Apps Script). To close sign-ups, open the
+sheet and **tick the checkbox in B1**. Within seconds the site swaps the form for
+a "That's a wrap." notice pointing stragglers to WhatsApp. Untick to reopen.
+Flipping the checkbox needs **no redeploy** — do it from your phone if you like.
+The admin page keeps working either way.
+
+---
+
 ## If something breaks
 
 | What you see | Fix |

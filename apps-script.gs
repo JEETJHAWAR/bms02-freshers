@@ -55,6 +55,7 @@ function doPost(e) {
 }
 
 function saveSignup(body) {
+  if (signupsClosed()) return json({ ok: false, closed: true, error: 'Sign-ups are closed' });
   if (body.website) return json({ ok: true });          // honeypot: a bot
   if (!body.name || !body.email) return json({ ok: false, error: 'Missing name or email' });
 
@@ -96,13 +97,37 @@ function saveSignup(body) {
 function doGet(e) {
   if (e && e.parameter && e.parameter.stats) {
     try {
-      return json({ ok: true, count: Math.max(0, getSheet().getLastRow() - 1) });
+      return json({ ok: true, count: Math.max(0, getSheet().getLastRow() - 1),
+                    closed: signupsClosed() });
     } catch (err) {
       return json({ ok: false });
     }
   }
   return ContentService.createTextOutput('Freshers sign-up endpoint is live.')
                        .setMimeType(ContentService.MimeType.TEXT);
+}
+
+
+/* ================= the pause switch =================
+ * A checkbox in the sheet: Settings tab, cell B1. Tick it and the site stops
+ * accepting sign-ups (the page swaps the form for a closed notice). Untick to
+ * reopen. No redeploy needed to flip it — this reads the cell on every request.
+ * The tab creates itself on the first request after this code is deployed.
+ */
+function signupsClosed() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let s = ss.getSheetByName('Settings');
+    if (!s) {
+      s = ss.insertSheet('Settings');
+      s.getRange('A1').setValue('Sign-ups closed?').setFontWeight('bold');
+      s.getRange('B1').insertCheckboxes();
+      s.setColumnWidth(1, 160);
+    }
+    return s.getRange('B1').getValue() === true;
+  } catch (err) {
+    return false;   // if anything is off, fail open — better than losing sign-ups
+  }
 }
 
 

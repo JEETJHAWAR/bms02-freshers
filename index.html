@@ -302,6 +302,12 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 .nojs{background:var(--amber-dim);border:1px solid var(--amber);border-radius:12px;padding:20px 22px}
 .nojs p{margin:0;font-size:.95rem;color:var(--paper)}
 
+/* sign-ups closed notice */
+.closed{max-width:720px}
+.closed p{color:var(--muted);margin:0 0 16px;max-width:58ch}
+.closed b{color:var(--paper)}
+.closed .btn{margin-top:6px}
+
 /* ===== PRINT: the "Save as PDF" ticket ===== */
 @media print{
   body.print-ticket header,body.print-ticket section:not(#signup),body.print-ticket footer,
@@ -424,10 +430,19 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
 <!-- ===== FORM ===== -->
 <section class="pad" id="signup" style="border-top:1px solid var(--line)">
   <div class="wrap">
-    <div class="rise" style="margin-bottom:32px">
+    <div class="rise" id="signupIntro" style="margin-bottom:32px">
       <p class="eyebrow">Two minutes</p>
       <h2 class="h2">Put your name down<i>.</i></h2>
       <p class="lede">Only the organising team sees this. Changed your mind later? Submit again with the same email and it replaces your old answer.</p>
+    </div>
+
+    <!-- shown instead of the form when the Settings checkbox in the sheet is ticked -->
+    <div class="closed hidden" id="closedBox">
+      <p class="eyebrow">Sign-ups closed</p>
+      <h2 class="h2">That's a wrap<i>.</i></h2>
+      <p>Sign-ups closed on <b data-cfg="deadline">Thursday 10 September</b>. The list is with the organisers and the run of show is being locked in.</p>
+      <p>Missed the window but still want in? There's usually room for one more pair of hands — ask nicely:</p>
+      <a class="btn amber" id="closedWa" href="#" target="_blank" rel="noopener">Message the organisers</a>
     </div>
 
     <form id="signupForm" novalidate>
@@ -643,7 +658,7 @@ $("#roll").placeholder = rollExample();
 $("#email").placeholder = "you@" + CONFIG.emailDomain;
 
 const waHref = "https://wa.me/" + CONFIG.contactWhatsApp;
-["footWa","tWa","waFallback"].forEach(id=>{ const el=$("#"+id); if(el) el.href = waHref; });
+["footWa","tWa","waFallback","closedWa"].forEach(id=>{ const el=$("#"+id); if(el) el.href = waHref; });
 
 $("#menu").innerHTML = ACTS.map(n=>
   `<div class="menu-item"><span class="menu-name">${esc(n)}</span></div>`
@@ -797,10 +812,14 @@ async function send(){
     body: JSON.stringify(data),
     signal: ctl.signal
   }).then(r=>r.json()).then(out=>{
+    if(out && out.closed){ const e = new Error("closed"); e.closed = true; throw e; }
     if(!out || out.ok !== true) throw new Error("rejected");
     return true;
   });
   request.finally(()=>clearTimeout(bail)).catch(()=>{});
+
+  let hitClosed = false;
+  request.catch(e=>{ if(e && e.closed) hitClosed = true; });
 
   const outcome = await Promise.race([
     request.then(()=>"saved", ()=>"failed"),
@@ -810,15 +829,19 @@ async function send(){
   sending = false;
   btn.disabled = false; btn.textContent = label;
 
-  if(outcome === "failed"){ showFailure(); return; }
+  if(outcome === "failed"){
+    if(hitClosed) showClosed(); else showFailure();
+    return;
+  }
 
   showTicket(data);
 
   // still in flight -- keep watching, and own up if it turns out badly
-  if(outcome === "pending") request.catch(()=>{
+  if(outcome === "pending") request.catch(e=>{
     $("#ticketWrap").classList.add("hidden");
     $("#signupForm").classList.remove("hidden");
     if(liveCount) liveCount--;
+    if(e && e.closed){ showClosed(); return; }
     showFailure("Sorry — we showed you a ticket too early. That didn't save. "
               + "Your answers are still here: hit retry, or send them across on WhatsApp.");
   });
@@ -829,6 +852,14 @@ function showFailure(msg){
   const box = $("#formError");
   box.classList.remove("hidden");
   box.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+/* the pause switch: the organisers ticked "Sign-ups closed?" in the sheet */
+function showClosed(){
+  ["signupIntro","signupForm","formError","ticketWrap"].forEach(id=>$("#"+id).classList.add("hidden"));
+  $("#closedBox").classList.remove("hidden");
+  const st = $("#sticky"); if(st) st.remove();
+  $$('[data-cfg="deadlineShort"]').forEach(el=>el.textContent = "Sign-ups closed");
 }
 
 $("#copyBtn").addEventListener("click", async ()=>{
@@ -1019,9 +1050,10 @@ if("IntersectionObserver" in window){
 }
 
 let liveCount = 0;
-if(CONFIG.showCounter && CONFIG.endpoint.indexOf("PASTE_YOUR") !== 0){
+if(CONFIG.endpoint.indexOf("PASTE_YOUR") !== 0){
   fetch(CONFIG.endpoint + "?stats=1").then(r=>r.json()).then(d=>{
-    if(d && d.ok && d.count > 0){
+    if(d && d.closed) showClosed();
+    if(CONFIG.showCounter && d && d.ok && d.count > 0){
       liveCount = d.count;
       $("#countNum").textContent = d.count;
       $("#counter").classList.add("on");
