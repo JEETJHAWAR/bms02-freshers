@@ -160,7 +160,9 @@ Either way needs **no redeploy**.
 ## Privacy
 
 The endpoint URL is visible in the page source. Without the admin password all it
-can do is add a row and report a total count, which powers the "47 signed up" pill.
+can do is add a row *for a valid @iimk.ac.in address with a BMS/01 roll number* and
+report a total count, which powers the "47 signed up" pill. Values are stored as
+plain text, never as spreadsheet formulas.
 Set `showCounter: false` to switch that off. The full list only comes back to
 whoever knows the admin password (see *Getting responses out*). If you ever get
 spammed, delete the deployment and create a new one; the old URL dies instantly.

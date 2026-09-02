@@ -35,6 +35,13 @@ Everything editable is in three blocks near the bottom of `index.html`, inside `
   Apps Script cannot answer. Do not change it to `application/json`.
 - Apps Script upserts by email, so resubmitting updates the row instead of duplicating.
 - A hidden `#website` input is a honeypot. Bots fill it, humans don't; filled = discarded.
+- **The `/exec` URL is public, so every browser-side rule is repeated server-side.**
+  `saveSignup` re-checks the email domain (`emailAllowed`) and roll format (`ROLL_RE`);
+  without that the endpoint is an open relay for the organiser's Gmail. Every value
+  written to the sheet goes through `safeCell`, which quotes a leading `= + - @` —
+  Sheets would otherwise run it as a formula, and an injected `=IMAGE(...)` fires when
+  an organiser opens the sheet and can leak every signer's details. If you add a field,
+  it must go through `safeCell` too.
 - `admin.html` POSTs `{action:"admin", pass}` to the same endpoint; Apps Script
   compares the SHA-256 of `pass` against `ADMIN_PASS_SHA256` and returns all rows.
   `{action:"admin-delete", pass, email}` deletes that person's row (email is the

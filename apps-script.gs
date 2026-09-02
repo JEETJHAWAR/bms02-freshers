@@ -41,6 +41,28 @@ const COLS = [
 
 const EMAIL_COL = 5;   // column E
 
+/* The /exec URL is public. Anything checked only in the browser is not checked at
+ * all — a script can POST here directly — so the rules from index.html are
+ * repeated here. Keep them in step with CONFIG.emailDomain / rollPrefix / rollDigits. */
+const EMAIL_DOMAIN = 'iimk.ac.in';
+const ROLL_RE      = /^BMS\/01\/\d{3}$/i;
+
+/** Google Sheets runs any cell that starts with = + - or @ as a formula. A public
+ *  endpoint must never be able to write one: an injected =IMAGE("...") would fire
+ *  the moment an organiser opened the sheet and could send every signer's name,
+ *  roll, phone and email to whoever planted it. Prefixing with ' keeps it as text. */
+function safeCell(v) {
+  const s = String(v == null ? '' : v).slice(0, 1200);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+
+/** exactly one @, and the domain is ours */
+function emailAllowed(v) {
+  const e = String(v == null ? '' : v).trim().toLowerCase();
+  const parts = e.split('@');
+  return parts.length === 2 && parts[0].length > 0 && parts[1] === EMAIL_DOMAIN;
+}
+
 
 /* ================= receive a sign-up ================= */
 function doPost(e) {
@@ -60,6 +82,12 @@ function saveSignup(body) {
   if (body.website) return json({ ok: true });          // honeypot: a bot
   if (!body.name || !body.email) return json({ ok: false, error: 'Missing name or email' });
 
+  // re-check the browser's rules here; see EMAIL_DOMAIN above for why
+  if (!emailAllowed(body.email))
+    return json({ ok: false, error: 'Use your institute email address' });
+  if (!ROLL_RE.test(String(body.roll || '').trim()))
+    return json({ ok: false, error: 'That roll number is not in the BMS/01/123 format' });
+
   const lock = LockService.getScriptLock();
   let wasUpdate = false;
   try {
@@ -71,7 +99,7 @@ function saveSignup(body) {
 
     const row = COLS.map(function (c) {
       if (c[1] === 'timestamp' || c[1] === 'updated') return now;
-      return String(body[c[1]] == null ? '' : body[c[1]]).slice(0, 1200);
+      return safeCell(body[c[1]]);
     });
 
     // same email again = update, not a duplicate row

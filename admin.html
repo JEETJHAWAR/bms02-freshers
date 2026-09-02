@@ -97,7 +97,9 @@ h1 i{font-style:normal;color:var(--hot)}
   padding:9px 16px;border-radius:999px;transition:all .15s ease}
 .tab:hover{color:var(--paper)}
 .tab[aria-pressed=true]{background:var(--hot-dim);color:var(--paper);box-shadow:inset 0 0 0 1.5px var(--hot)}
-.controls input{flex:1;min-width:150px;font-family:var(--body);font-size:15px;color:var(--paper);
+/* 16px, not 15: iOS Safari zooms the whole page in on any input below 16px
+   and does not zoom back out afterwards */
+.controls input{flex:1;min-width:150px;font-family:var(--body);font-size:16px;color:var(--paper);
   background:rgba(0,0,0,.26);border:1px solid var(--line-2);border-radius:999px;padding:9px 16px}
 .controls input:focus{outline:none;border-color:var(--amber)}
 .controls input::placeholder{color:#8272A0}
@@ -194,7 +196,7 @@ h1 i{font-style:normal;color:var(--hot)}
         <button type="button" class="tab" data-tab="perf" aria-pressed="false">Performers</button>
         <button type="button" class="tab" data-tab="vol"  aria-pressed="false">Volunteers</button>
       </div>
-      <input type="search" id="q" placeholder="Search name, roll, act…">
+      <input type="search" id="q" aria-label="Search entries" placeholder="Search name, roll, act…">
       <button type="button" class="mini" id="refresh">Refresh</button>
       <button type="button" class="mini" id="csv">Excel (CSV)</button>
       <button type="button" class="mini" id="pdf">Save PDF</button>

@@ -316,6 +316,10 @@ footer{border-top:1px solid var(--line);padding-block:40px 110px}
   body.print-ticket{background:#fff}
   body.print-ticket .ticket{width:420px;margin:24px auto;
     -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* the notches are ink-coloured discs that punch into the dark page; on white
+     paper their outer halves would print as dark blobs stuck to the card */
+  body.print-ticket .ticket-bottom::before,
+  body.print-ticket .ticket-bottom::after{display:none}
 }
 
 /* ===== MOTION ===== */
@@ -737,6 +741,11 @@ function validate(){
   let first = null;
   const fail = (el,msg)=>{ const f = el.closest(".field")||el; setError(f,msg); if(!first) first=f; };
 
+  // wipe the slate first: an error can be fixed by touching a *different* control
+  // (answering Yes to Performing clears "pick yes to at least one" under
+  // Volunteering), and nothing else would ever take that message back down.
+  $$(".field").forEach(clearError);
+
   if(!$("#name").value.trim()) fail($("#name"), "We need a name for the list.");
   const roll = $("#roll").value.trim();
   if(!roll) fail($("#roll"), "Roll number, please.");
@@ -785,6 +794,8 @@ function collect(){
 
 /* ===== submit ===== */
 let sending = false;
+let failedPayload = null;   // answers from a submit that turned out to have failed
+let formGen = 0;            // bumped by "Sign up someone else" — see the late-failure path
 $("#signupForm").addEventListener("submit", e=>{ e.preventDefault(); send(); });
 $("#retryBtn").addEventListener("click", ()=>send());
 
@@ -802,6 +813,8 @@ async function send(){
   $("#formError").classList.add("hidden");
 
   const data = collect();
+  const gen  = formGen;      // if this changes, the form was cleared for someone else
+  failedPayload = null;
   const ctl  = new AbortController();
   const bail = setTimeout(()=>ctl.abort(), 30000);
 
@@ -841,12 +854,23 @@ async function send(){
 
   // still in flight -- keep watching, and own up if it turns out badly
   if(outcome === "pending") request.catch(e=>{
-    $("#ticketWrap").classList.add("hidden");
-    $("#signupForm").classList.remove("hidden");
     if(liveCount) liveCount--;
     if(e && e.closed){ showClosed(); return; }
-    showFailure("Sorry — we showed you a ticket too early. That didn't save. "
-              + "Your answers are still here: hit retry, or send them across on WhatsApp.");
+
+    $("#ticketWrap").classList.add("hidden");
+    $("#signupForm").classList.remove("hidden");
+    failedPayload = data;
+
+    // "Sign up someone else" may have blanked the form while this was in flight --
+    // don't promise answers that are no longer on screen.
+    if(gen !== formGen){
+      showFailure(data.name + "'s sign-up didn't save after all, and the form has since been "
+                + "cleared for the next person. Tap “Copy my answers” to get those "
+                + "details back, then send them across on WhatsApp.");
+    }else{
+      showFailure("Sorry — we showed you a ticket too early. That didn't save. "
+                + "Your answers are still here: hit retry, or send them across on WhatsApp.");
+    }
   });
 }
 
@@ -878,7 +902,8 @@ function showClosed(){
 }
 
 $("#copyBtn").addEventListener("click", async ()=>{
-  const d = collect(); delete d.website;
+  // prefer the payload that actually failed — the form may have been cleared since
+  const d = Object.assign({}, failedPayload || collect()); delete d.website;
   const text = Object.entries(d).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join("\n");
   try{ await navigator.clipboard.writeText(text); $("#copyBtn").textContent = "Copied"; }
   catch{ $("#copyBtn").textContent = "Couldn't copy — screenshot instead"; }
@@ -1030,6 +1055,9 @@ async function ticketPNG(){
 
 $("#againBtn").addEventListener("click", ()=>{
   $("#signupForm").reset();
+  $$(".field").forEach(clearError);   // reset() restores values, not error state
+  $("#formError").classList.add("hidden");
+  formGen++;                          // any in-flight submit now belongs to someone else
   $$(".chip[aria-pressed=true]").forEach(c=>c.setAttribute("aria-pressed","false"));
   $$(".yn").forEach(b=>b.setAttribute("aria-pressed","false"));
   performing = volunteering = null;
